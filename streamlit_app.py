@@ -169,15 +169,15 @@ def get_video_info(url):
             return {
                 'title': info.get('title', 'Unknown'),
                 'uploader': info.get('uploader', info.get('channel', 'Unknown')),
-                'duration': info.get('duration', 0),
+                'duration': info.get('duration') or 0,
                 'thumbnail': info.get('thumbnail', ''),
                 'description': info.get('description', '')[:200] + '...' if info.get('description') else '',
-                'view_count': info.get('view_count', 0),
-                'like_count': info.get('like_count', 0),
+                'view_count': info.get('view_count') or 0,
+                'like_count': info.get('like_count') or 0,
                 'upload_date': info.get('upload_date', ''),
                 'formats': info.get('formats', []),
                 'ext': info.get('ext', 'mp4'),
-                'filesize_approx': info.get('filesize_approx', 0),
+                'filesize_approx': info.get('filesize_approx') or 0,
             }
     except Exception as e:
         return {'error': str(e)}
@@ -185,7 +185,7 @@ def get_video_info(url):
 def format_duration(seconds):
     if not seconds:
         return "N/A"
-    mins, secs = divmod(seconds, 60)
+    mins, secs = divmod(int(seconds), 60)
     hrs, mins = divmod(mins, 60)
     if hrs:
         return f"{hrs}:{mins:02d}:{secs:02d}"
@@ -194,11 +194,25 @@ def format_duration(seconds):
 def format_size(bytes_val):
     if not bytes_val:
         return "Unknown"
+    bytes_val = float(bytes_val)
     for unit in ['B', 'KB', 'MB', 'GB']:
         if bytes_val < 1024:
             return f"{bytes_val:.1f} {unit}"
         bytes_val /= 1024
     return f"{bytes_val:.1f} TB"
+
+def format_count(num):
+    """Safely format large numbers (views, likes)."""
+    if not num:
+        return "0"
+    num = float(num)
+    if num >= 1e9:
+        return f"{num/1e9:.1f}B"
+    if num >= 1e6:
+        return f"{num/1e6:.1f}M"
+    if num >= 1e3:
+        return f"{num/1e3:.1f}K"
+    return f"{int(num)}"
 
 def get_format_string(quality, mode, ffmpeg_available):
     """
@@ -207,13 +221,10 @@ def get_format_string(quality, mode, ffmpeg_available):
     """
     if mode == "Audio Only":
         if ffmpeg_available:
-            # Let yt-dlp extract best audio and convert to mp3 via postprocessor
             return "bestaudio/best"
         else:
-            # Return native audio format (m4a/webm) — no conversion needed
             return "bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio"
 
-    # Video modes
     height_map = {
         "Best": None,
         "4K (2160p)": 2160,
@@ -226,13 +237,11 @@ def get_format_string(quality, mode, ffmpeg_available):
     height = height_map.get(quality)
 
     if ffmpeg_available:
-        # High-quality merged streams (separate video + audio)
         if height:
             return f"bestvideo[height<={height}][vcodec!*=av01]+bestaudio[acodec!*=opus]/bestvideo[height<={height}]+bestaudio/best[height<={height}]"
         else:
             return "bestvideo[vcodec!*=av01]+bestaudio[acodec!*=opus]/bestvideo+bestaudio/best"
     else:
-        # Fallback: pre-merged formats (single file, no ffmpeg needed)
         if height:
             return f"best[height<={height}][ext=mp4]/best[height<={height}][ext=webm]/best[height<={height}]"
         else:
@@ -253,7 +262,6 @@ def build_ydl_opts(format_string, output_path, progress_hook, ffmpeg_available, 
     }
 
     if ffmpeg_available and mode == "Audio Only":
-        # Extract audio to MP3 using ffmpeg
         ydl_opts['postprocessors'] = [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
@@ -354,11 +362,9 @@ if url and (download_clicked or 'info' in st.session_state):
         with meta_cols[0]:
             st.markdown(f'<div class="metric-box"><div class="metric-value">{format_size(info.get("filesize_approx"))}</div><div class="metric-label">Est. Size</div></div>', unsafe_allow_html=True)
         with meta_cols[1]:
-            views = info.get('view_count', 0)
-            st.markdown(f'<div class="metric-box"><div class="metric-value">{views/1e6:.1f}M</div><div class="metric-label">Views</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="metric-box"><div class="metric-value">{format_count(info.get("view_count"))}</div><div class="metric-label">Views</div></div>', unsafe_allow_html=True)
         with meta_cols[2]:
-            likes = info.get('like_count', 0)
-            st.markdown(f'<div class="metric-box"><div class="metric-value">{likes/1e3:.1f}K</div><div class="metric-label">Likes</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="metric-box"><div class="metric-value">{format_count(info.get("like_count"))}</div><div class="metric-label">Likes</div></div>', unsafe_allow_html=True)
 
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -423,7 +429,6 @@ if url and (download_clicked or 'info' in st.session_state):
                     mime_type = "video/mp4"
 
                 # Read file into memory (required for Streamlit download button)
-                # Warn if file is huge
                 file_size = os.path.getsize(file_path)
                 if file_size > 500 * 1024 * 1024:  # 500MB
                     st.warning("⚠️ File is larger than 500MB. Streamlit Cloud may struggle with large files.")
@@ -441,7 +446,6 @@ if url and (download_clicked or 'info' in st.session_state):
         if download_error:
             st.markdown(f'<div class="error-card">❌ Download failed: {download_error}</div>', unsafe_allow_html=True)
 
-            # Specific guidance for common errors
             if "ffmpeg is not installed" in download_error.lower() or "merging" in download_error.lower():
                 st.error("""
                 **FFmpeg Missing Error Detected!**
@@ -450,8 +454,6 @@ if url and (download_clicked or 'info' in st.session_state):
                 1. Create a file named `packages.txt` in your repo root
                 2. Add one line: `ffmpeg`
                 3. Re-deploy the app
-
-                The app attempted to use pre-merged formats as fallback, but yt-dlp still required ffmpeg.
                 """)
         elif file_bytes:
             st.markdown(
