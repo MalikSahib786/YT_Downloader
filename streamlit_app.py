@@ -162,6 +162,20 @@ def get_video_info(url):
         'quiet': True,
         'no_warnings': True,
         'skip_download': True,
+        # Anti-403 measures for info extraction too
+        'extractor_args': {
+            'youtube': {
+                'player_js_version': 'actual',
+                'player_client': 'web_safari',
+            }
+        },
+        'headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Referer': 'https://www.youtube.com/',
+        },
+        'geo_bypass': True,
     }
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -248,7 +262,7 @@ def get_format_string(quality, mode, ffmpeg_available):
             return "best[ext=mp4]/best[ext=webm]/best"
 
 def build_ydl_opts(format_string, output_path, progress_hook, ffmpeg_available, mode):
-    """Build yt-dlp options dict."""
+    """Build yt-dlp options dict with full anti-403 protection."""
     ydl_opts = {
         'format': format_string,
         'outtmpl': os.path.join(output_path, '%(title)s.%(ext)s'),
@@ -259,6 +273,21 @@ def build_ydl_opts(format_string, output_path, progress_hook, ffmpeg_available, 
         'continue_dl': True,
         'quiet': True,
         'no_warnings': False,
+
+        # ─── ANTI-403 FIXES ───
+        'extractor_args': {
+            'youtube': {
+                'player_js_version': 'actual',
+                'player_client': 'web_safari',
+            }
+        },
+        'headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Referer': 'https://www.youtube.com/',
+        },
+        'geo_bypass': True,
     }
 
     if ffmpeg_available and mode == "Audio Only":
@@ -303,6 +332,10 @@ ffmpeg""", language="text")
     st.markdown("---")
     st.markdown("### 🛡️ Legal Note")
     st.caption("Only download content you own or have rights to. Respect copyright laws.")
+
+    st.markdown("---")
+    st.markdown("### 🔒 Anti-Bot Status")
+    st.caption("Anti-403 measures active: player_js_version=actual + Safari client + realistic headers")
 
 # ─────────────────────────────────────────────────────────────
 # MAIN INPUT AREA
@@ -446,7 +479,23 @@ if url and (download_clicked or 'info' in st.session_state):
         if download_error:
             st.markdown(f'<div class="error-card">❌ Download failed: {download_error}</div>', unsafe_allow_html=True)
 
-            if "ffmpeg is not installed" in download_error.lower() or "merging" in download_error.lower():
+            # Specific guidance for 403 errors
+            if "403" in download_error or "forbidden" in download_error.lower():
+                st.error("""
+                **YouTube 403 Block Detected!**
+
+                YouTube is blocking this cloud server's IP address. This is common on AWS/Google Cloud (Streamlit Cloud).
+
+                **Try these fixes:**
+                1. **Retry** — Sometimes it works on the 2nd or 3rd attempt
+                2. **Lower the quality** — 360p/480p is less likely to be blocked than 1080p/4K
+                3. **Try Audio Only mode** — Audio streams are less aggressively blocked
+                4. **Use a different video** — Some videos are more restricted than others
+                5. **Run locally** — This app works perfectly on your local machine where YouTube sees a residential IP
+
+                The anti-403 measures (player_js_version=actual + Safari client) are already active in this app.
+                """)
+            elif "ffmpeg is not installed" in download_error.lower() or "merging" in download_error.lower():
                 st.error("""
                 **FFmpeg Missing Error Detected!**
 
