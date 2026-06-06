@@ -7,6 +7,7 @@ import subprocess
 from io import BytesIO
 from pathlib import Path
 import time
+import hashlib
 
 # PAGE CONFIG
 st.set_page_config(
@@ -299,6 +300,20 @@ def format_count(num):
     if num >= 1e3: return f"{num/1e3:.1f}K"
     return f"{int(num)}"
 
+def sanitize_filename(title, max_len=80):
+    """Sanitize and truncate filename to prevent 'File name too long' errors."""
+    if not title:
+        title = "download"
+    # Remove/replace invalid chars
+    sanitized = "".join(c if c.isalnum() or c in " ._-" else "_" for c in title)
+    sanitized = sanitized.strip("._")
+    # Truncate if too long
+    if len(sanitized) > max_len:
+        # Create short hash for uniqueness
+        short_hash = hashlib.md5(sanitized.encode()).hexdigest()[:6]
+        sanitized = sanitized[:max_len-7] + "_" + short_hash
+    return sanitized or "download"
+
 def get_format_string(quality, mode, ffmpeg_available, info):
     content_type = info.get('content_type', 'video')
     is_youtube = info.get('is_youtube', False)
@@ -328,9 +343,13 @@ def get_format_string(quality, mode, ffmpeg_available, info):
 
 def build_ydl_opts(format_string, output_path, progress_hook, ffmpeg_available, mode, info):
     ydl_opts = get_base_ydl_opts()
+
+    # FIX: Use sanitized short filename to prevent "File name too long" errors
+    safe_title = sanitize_filename(info.get('title', 'download'))
+
     ydl_opts.update({
         'format': format_string,
-        'outtmpl': os.path.join(output_path, '%(title)s.%(ext)s'),
+        'outtmpl': os.path.join(output_path, f'{safe_title}.%(ext)s'),
         'progress_hooks': [progress_hook],
         'noplaylist': True,
         'retries': 10, 'fragment_retries': 10,
@@ -621,7 +640,14 @@ elif st.session_state.video_info and st.session_state.video_info.get('success', 
         if download_error:
             st.markdown(f'<div class="error-card">{download_error}</div>', unsafe_allow_html=True)
 
-            if "403" in download_error or "forbidden" in download_error.lower():
+            if "too long" in download_error.lower() or "file name" in download_error.lower():
+                st.markdown("""
+                <div class="tip-card">
+                <b>File name too long</b><br>
+                The video title was too long for the filesystem. This has been fixed in the latest version with auto-truncation.
+                </div>
+                """, unsafe_allow_html=True)
+            elif "403" in download_error or "forbidden" in download_error.lower():
                 st.markdown("""
                 <div class="tip-card">
                 <b>YouTube 403 Block - Cloud IP Detected</b><br><br>
