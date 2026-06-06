@@ -7,6 +7,8 @@ from pathlib import Path
 import time
 import hashlib
 from datetime import datetime
+import base64
+import urllib.request
 
 st.set_page_config(
     page_title="Universal Downloader Pro",
@@ -16,29 +18,44 @@ st.set_page_config(
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  CSS — PROFESSIONAL DARK THEME
+#  CSS — PREMIUM DARK THEME (Fixed & Polished)
 # ═══════════════════════════════════════════════════════════════════════════════
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap');
 
 :root {
-    --bg:      #06090f;
-    --surface: #0b1018;
-    --card:    #0e1520;
-    --border:  #161f2e;
-    --border2: #1c2a3d;
-    --text:    #dce6f0;
-    --muted:   #4a607a;
-    --dim:     #1e2d40;
-    --accent:  #ff5a1f;
-    --accent2: #ff8c42;
-    --green:   #10d97c;
-    --blue:    #3b8bff;
-    --red:     #ff3b5c;
-    --font:    'Outfit', sans-serif;
-    --mono:    'JetBrains Mono', monospace;
+    --bg:       #080c12;
+    --surface:  #0c1119;
+    --card:     #0f1622;
+    --card2:    #111a28;
+    --border:   #182230;
+    --border2:  #1e2d42;
+    --border3:  #243650;
+    --text:     #d8e8f5;
+    --text2:    #8fadc8;
+    --muted:    #3f5470;
+    --dim:      #172030;
+    --accent:   #f95f1a;
+    --accent2:  #ff8944;
+    --accent3:  #ffb347;
+    --green:    #00e87b;
+    --green2:   #00c468;
+    --blue:     #3d8eff;
+    --red:      #ff3b5c;
+    --purple:   #9b6dff;
+    --font:     'DM Sans', sans-serif;
+    --display:  'Syne', sans-serif;
+    --mono:     'DM Mono', monospace;
+    --r-card:   18px;
+    --r-input:  14px;
+    --r-btn:    12px;
+    --shadow:   0 20px 60px rgba(0,0,0,0.7);
+    --glow-o:   0 0 32px rgba(249,95,26,0.25);
+    --glow-g:   0 0 32px rgba(0,232,123,0.25);
 }
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body, [class*="css"] {
     font-family: var(--font) !important;
@@ -46,220 +63,266 @@ html, body, [class*="css"] {
     color: var(--text) !important;
 }
 
-/* ── Page background noise texture ── */
 .stApp {
     background:
-        radial-gradient(ellipse 80% 40% at 50% -10%, rgba(255,90,31,0.06) 0%, transparent 70%),
+        radial-gradient(ellipse 90% 50% at 50% -5%, rgba(249,95,26,0.07) 0%, transparent 65%),
+        radial-gradient(ellipse 60% 30% at 80% 80%, rgba(0,100,255,0.03) 0%, transparent 60%),
         var(--bg) !important;
+    min-height: 100vh;
 }
 
 /* ── Hide Streamlit chrome ── */
-#MainMenu, footer, .stDeployButton { visibility: hidden; display: none; }
-header[data-testid="stHeader"] { background: transparent !important; }
+#MainMenu, footer, .stDeployButton,
+[data-testid="stToolbar"] { visibility: hidden !important; display: none !important; }
+header[data-testid="stHeader"] { background: transparent !important; height: 0 !important; }
 
-/* ══════════════════════════════
+/* ── Block container ── */
+.block-container {
+    max-width: 780px !important;
+    padding: 0 1.2rem 3rem !important;
+}
+
+/* ════════════════════════════════════════
    HEADER
-══════════════════════════════ */
+════════════════════════════════════════ */
 .udp-header {
     text-align: center;
-    padding: 2.4rem 0 1rem;
+    padding: 3rem 0 1.2rem;
+}
+.udp-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 54px; height: 54px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(249,95,26,0.15), rgba(255,137,68,0.08));
+    border: 1px solid rgba(249,95,26,0.25);
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--glow-o), inset 0 1px 0 rgba(255,255,255,0.05);
 }
 .udp-wordmark {
-    font-size: 2.2rem;
-    font-weight: 900;
-    letter-spacing: -0.05em;
+    font-family: var(--display) !important;
+    font-size: 2.4rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
     line-height: 1;
-    background: linear-gradient(135deg, #ff5a1f 0%, #ff8c42 55%, #ffb347 100%);
+    background: linear-gradient(135deg, #f95f1a 0%, #ff8944 50%, #ffb347 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
 .udp-sub {
-    margin-top: 0.45rem;
+    margin-top: 0.5rem;
     color: var(--muted);
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     font-weight: 500;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
 }
 .udp-rule {
-    margin: 1.2rem auto 1.8rem;
+    margin: 1.5rem auto 2rem;
     height: 1px;
-    max-width: 500px;
-    background: linear-gradient(90deg, transparent 0%, var(--border2) 30%, var(--border2) 70%, transparent 100%);
+    max-width: 400px;
+    background: linear-gradient(90deg, transparent, var(--border3) 30%, var(--border3) 70%, transparent);
 }
 
-/* ══════════════════════════════
+/* ════════════════════════════════════════
    SEARCH BAR
-══════════════════════════════ */
+════════════════════════════════════════ */
+.search-wrap {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    background: var(--card);
+    border: 1.5px solid var(--border2);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+}
+.search-wrap:focus-within {
+    border-color: rgba(249,95,26,0.45);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.3), 0 0 0 3px rgba(249,95,26,0.08);
+}
 
-/* Remove ALL default Streamlit spacing around the input */
 div[data-testid="stTextInput"] {
-    margin: 0 !important;
-    padding: 0 !important;
+    flex: 1; margin: 0 !important; padding: 0 !important;
 }
 div[data-testid="stTextInput"] > div {
-    margin: 0 !important;
+    margin: 0 !important; padding: 0 !important;
 }
 div[data-testid="stTextInput"] > div > div {
-    border: none !important;
-    box-shadow: none !important;
+    border: none !important; box-shadow: none !important;
+    background: transparent !important; border-radius: 0 !important;
+}
+div[data-testid="stTextInput"] input {
+    height: 54px !important;
     background: transparent !important;
+    color: var(--text) !important;
+    border: none !important;
+    border-radius: 0 !important;
+    font-family: var(--mono) !important;
+    font-size: 0.8rem !important;
+    font-weight: 400 !important;
+    padding: 0 1.1rem !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+div[data-testid="stTextInput"] input::placeholder {
+    color: var(--muted) !important;
+    font-size: 0.79rem !important;
+    font-family: var(--font) !important;
+    font-weight: 400 !important;
 }
 
-/* The actual input */
-.udp-search-field input {
-    height: 52px !important;
-    background: var(--card) !important;
-    color: var(--text) !important;
-    border: 1.5px solid var(--border2) !important;
-    border-right: none !important;
-    border-radius: 16px 0 0 16px !important;
-    font-family: var(--mono) !important;
-    font-size: 0.82rem !important;
-    font-weight: 400 !important;
+/* Buttons inside search bar */
+.sb-action button, .sb-go button {
+    height: 54px !important;
+    border: none !important;
+    border-radius: 0 !important;
+    font-size: 0.95rem !important;
+    font-weight: 500 !important;
     padding: 0 1rem !important;
-    transition: border-color 0.2s, box-shadow 0.2s !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+    transition: all 0.18s ease !important;
     outline: none !important;
 }
-.udp-search-field input:focus {
-    border-color: rgba(255,90,31,0.5) !important;
-    box-shadow: none !important;
-}
-.udp-search-field input::placeholder {
+.sb-action button {
+    background: transparent !important;
     color: var(--muted) !important;
-    font-size: 0.8rem !important;
-    font-family: var(--font) !important;
+    border-left: 1px solid var(--border2) !important;
+    min-width: 48px !important;
 }
-
-/* Side action button (paste / clear) */
-.udp-side-btn button {
-    height: 52px !important;
-    min-width: 52px !important;
-    background: var(--card) !important;
-    border: 1.5px solid var(--border2) !important;
-    border-left: none !important;
-    border-right: none !important;
-    border-radius: 0 !important;
-    color: var(--muted) !important;
-    font-size: 1rem !important;
-    font-weight: 400 !important;
-    padding: 0 0.9rem !important;
-    box-shadow: none !important;
-    transition: background 0.2s, color 0.2s !important;
-}
-.udp-side-btn button:hover {
+.sb-action button:hover {
     background: var(--dim) !important;
-    color: var(--text) !important;
+    color: var(--text2) !important;
     transform: none !important;
-    box-shadow: none !important;
 }
-
-/* Analyze/search icon button */
-.udp-go-btn button {
-    height: 52px !important;
-    width: 52px !important;
+.sb-go button {
     background: linear-gradient(135deg, var(--accent), var(--accent2)) !important;
-    border: none !important;
-    border-radius: 0 16px 16px 0 !important;
     color: white !important;
+    min-width: 54px !important;
     font-size: 1.1rem !important;
-    font-weight: 700 !important;
-    padding: 0 !important;
-    box-shadow: 0 0 20px rgba(255,90,31,0.3) !important;
-    transition: box-shadow 0.25s, transform 0.2s !important;
+    border-left: 1px solid rgba(249,95,26,0.3) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.1) !important;
 }
-.udp-go-btn button:hover {
-    box-shadow: 0 0 30px rgba(255,90,31,0.5) !important;
-    transform: scale(1.05) !important;
-}
-.udp-go-btn button:active {
-    transform: scale(0.97) !important;
+.sb-go button:hover {
+    background: linear-gradient(135deg, #ff6f2e, #ff9954) !important;
+    transform: none !important;
 }
 
-/* Seamless bar: remove column gaps */
-div[data-testid="stHorizontalBlock"].udp-bar > div {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    gap: 0 !important;
+/* Kill column gaps inside search bar */
+div[data-testid="stHorizontalBlock"].searchbar-cols > div[data-testid="stColumn"] {
+    padding: 0 !important; gap: 0 !important; flex-shrink: 0 !important;
+}
+div[data-testid="stHorizontalBlock"].searchbar-cols > div[data-testid="stColumn"]:first-child {
+    flex: 1 1 auto !important;
 }
 
-/* ══════════════════════════════
-   OPTIONS ROW
-══════════════════════════════ */
-.stSelectbox > div > div {
-    background: var(--card) !important;
-    color: var(--text) !important;
-    border: 1.5px solid var(--border2) !important;
-    border-radius: 12px !important;
-    font-family: var(--font) !important;
-    font-size: 0.85rem !important;
-    min-height: 42px !important;
+/* ════════════════════════════════════════
+   SHIMMER SKELETON
+════════════════════════════════════════ */
+@keyframes shimmerSweep {
+    0%   { background-position: -500px 0; }
+    100% { background-position:  500px 0; }
 }
-div[data-testid="stSelectbox"] label {
-    color: var(--muted) !important;
-    font-size: 0.72rem !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.06em !important;
-    text-transform: uppercase !important;
+.sk-base {
+    background: linear-gradient(
+        90deg,
+        var(--card) 0%, var(--border) 25%, #1d3050 50%, var(--border) 75%, var(--card) 100%
+    );
+    background-size: 1000px 100%;
+    animation: shimmerSweep 1.8s ease-in-out infinite;
+    border-radius: 8px;
 }
+.shimmer-card {
+    background: var(--card);
+    border: 1.5px solid var(--border2);
+    border-radius: var(--r-card);
+    padding: 1.4rem;
+    margin: 1.4rem 0;
+    box-shadow: var(--shadow);
+}
+.sk-row { display: flex; gap: 1.2rem; }
+.sk-thumb { width: 160px; min-width: 160px; height: 90px; border-radius: 12px; }
+.sk-body { flex: 1; display: flex; flex-direction: column; gap: 10px; padding-top: 2px; }
+.sk-t1 { height: 18px; width: 80%; }
+.sk-t2 { height: 12px; width: 48%; }
+.sk-t3 { height: 24px; width: 34%; border-radius: 20px; margin-top: 4px; }
+.sk-stats { display: flex; gap: 8px; margin-top: 4px; }
+.sk-stat { flex: 1; height: 64px; border-radius: 10px; }
+.sk-divider { height: 1px; background: var(--border); margin: 1.1rem 0; }
+.sk-opts { height: 42px; border-radius: 10px; }
+.sk-btn  { height: 52px; border-radius: 12px; margin-top: 10px; }
 
-/* ══════════════════════════════
-   PRIMARY DOWNLOAD BUTTON
-══════════════════════════════ */
-.udp-dl-btn button {
-    height: 52px !important;
-    background: linear-gradient(135deg, #ff5a1f 0%, #ff8c42 100%) !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 14px !important;
-    font-family: var(--font) !important;
-    font-size: 0.95rem !important;
-    font-weight: 700 !important;
-    letter-spacing: 0.01em !important;
-    box-shadow: 0 4px 24px rgba(255,90,31,0.35) !important;
-    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+.fetch-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 1rem;
 }
-.udp-dl-btn button:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 8px 32px rgba(255,90,31,0.5) !important;
+.fetch-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulseDot 1.2s ease-in-out infinite;
 }
-.udp-dl-btn button:active {
-    transform: translateY(0) scale(0.98) !important;
+@keyframes pulseDot {
+    0%,100% { transform: scale(1); opacity: 1; }
+    50%      { transform: scale(1.4); opacity: 0.6; }
 }
+.fetch-txt { font-size: 0.8rem; color: var(--text2); font-weight: 500; }
+.fetch-step { color: var(--accent2); font-weight: 600; }
 
-/* Generic buttons */
-.stButton > button {
-    font-family: var(--font) !important;
-}
-
-/* ══════════════════════════════
+/* ════════════════════════════════════════
    RESULT CARD
-══════════════════════════════ */
+════════════════════════════════════════ */
 .result-card {
     background: var(--card);
-    border: 1px solid var(--border2);
-    border-radius: 20px;
+    border: 1.5px solid var(--border2);
+    border-radius: var(--r-card);
     padding: 1.4rem;
-    margin: 1.2rem 0 0.8rem;
-    box-shadow: 0 16px 48px rgba(0,0,0,0.6);
-    animation: slideUp 0.45s cubic-bezier(0.22,1,0.36,1) both;
+    margin: 1.4rem 0 0;
+    box-shadow: var(--shadow);
+    animation: riseIn 0.4s cubic-bezier(0.22,1,0.36,1) both;
 }
-@keyframes slideUp {
-    from { opacity: 0; transform: translateY(16px) scale(0.98); }
-    to   { opacity: 1; transform: translateY(0)    scale(1);    }
+@keyframes riseIn {
+    from { opacity: 0; transform: translateY(14px) scale(0.985); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-.rc-top { display: flex; gap: 1.1rem; }
+
+/* Thumbnail */
 .rc-thumb-wrap {
-    width: 170px; min-width: 170px;
+    width: 175px; min-width: 175px;
     border-radius: 12px; overflow: hidden;
     background: var(--dim);
     aspect-ratio: 16/9;
+    position: relative;
+    flex-shrink: 0;
 }
-.rc-thumb-wrap img { width:100%; height:100%; object-fit:cover; display:block; }
-.rc-info { flex: 1; min-width: 0; }
+.rc-thumb-wrap img {
+    width: 100%; height: 100%;
+    object-fit: cover; display: block;
+    border-radius: 12px;
+}
+.rc-thumb-placeholder {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 6px;
+    background: linear-gradient(135deg, var(--dim), var(--border));
+    border-radius: 12px;
+}
+.rc-thumb-placeholder span:first-child { font-size: 1.8rem; opacity: 0.4; }
+.rc-thumb-placeholder span:last-child  { font-size: 0.65rem; color: var(--muted); letter-spacing: .05em; }
+
+/* Info section */
+.rc-top { display: flex; gap: 1.2rem; }
+.rc-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
 .rc-title {
-    font-size: 0.98rem; font-weight: 700;
+    font-family: var(--display) !important;
+    font-size: 0.97rem; font-weight: 700;
     color: var(--text); line-height: 1.45;
     margin-bottom: 0.3rem;
     display: -webkit-box;
@@ -267,254 +330,389 @@ div[data-testid="stSelectbox"] label {
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
-.rc-uploader { color: var(--muted); font-size: 0.78rem; margin-bottom: 0.55rem; }
-.rc-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 0.7rem; }
-.badge {
-    display: inline-flex; align-items: center; gap: 3px;
-    padding: 3px 9px; border-radius: 20px;
-    font-size: 0.66rem; font-weight: 700;
-    letter-spacing: 0.06em; text-transform: uppercase;
+.rc-uploader {
+    color: var(--text2); font-size: 0.76rem;
+    margin-bottom: 0.55rem;
+    display: flex; align-items: center; gap: 4px;
 }
-.b-platform { background:rgba(255,90,31,.1);  color:#ff7a40;  border:1px solid rgba(255,90,31,.2);  }
-.b-type     { background:rgba(16,217,124,.08); color:#10d97c;  border:1px solid rgba(16,217,124,.18); }
-.b-subs     { background:rgba(59,139,255,.08); color:#3b8bff;  border:1px solid rgba(59,139,255,.18); }
-.rc-stats { display:flex; gap:8px; margin-top:auto; }
+.rc-uploader .sep { color: var(--border3); margin: 0 2px; }
+
+.rc-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 0.75rem; }
+.badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 0.64rem; font-weight: 700;
+    letter-spacing: 0.07em; text-transform: uppercase;
+    font-family: var(--mono) !important;
+}
+.b-platform { background: rgba(249,95,26,.1);  color: #f97940; border: 1px solid rgba(249,95,26,.2); }
+.b-type     { background: rgba(0,232,123,.07); color: #00e87b; border: 1px solid rgba(0,232,123,.18); }
+.b-subs     { background: rgba(61,142,255,.08); color: #3d8eff; border: 1px solid rgba(61,142,255,.18); }
+.b-note     { background: rgba(155,109,255,.07); color: #9b6dff; border: 1px solid rgba(155,109,255,.18); }
+
+/* Stat pills */
+.rc-stats { display: flex; gap: 8px; margin-top: auto; }
 .stat-pill {
-    flex:1; text-align:center;
+    flex: 1; text-align: center;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 10px; padding: 0.6rem 0.3rem;
+    border-radius: 10px; padding: 0.65rem 0.3rem;
+    transition: border-color .2s;
 }
-.stat-val { font-size:1.0rem; font-weight:800; color:var(--text); line-height:1; }
-.stat-lbl { font-size:0.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; margin-top:3px; }
+.stat-pill:hover { border-color: var(--border3); }
+.stat-val { font-family: var(--display) !important; font-size: 1.05rem; font-weight: 800; color: var(--text); line-height: 1; }
+.stat-lbl { font-size: 0.59rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-top: 4px; font-weight: 600; }
 
-/* Options bar inside result */
-.options-strip {
-    display: flex; align-items: center; gap: 10px;
-    padding: 1rem 0 0;
-    border-top: 1px solid var(--border);
-    margin-top: 1rem;
-}
-.opt-label { color:var(--muted); font-size:0.72rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; white-space:nowrap; }
+/* Card divider */
+.rc-divider { height: 1px; background: var(--border); margin: 1.2rem 0 1rem; }
 
-/* ══════════════════════════════
-   SHIMMER SKELETON
-══════════════════════════════ */
-@keyframes shimmerSweep {
-    0%   { background-position: -400px 0; }
-    100% { background-position:  400px 0; }
-}
-.sk-base {
-    background: linear-gradient(
-        90deg,
-        var(--card) 0%,
-        var(--border) 20%,
-        #1e3050 40%,
-        var(--border) 60%,
-        var(--card) 80%
-    );
-    background-size: 800px 100%;
-    animation: shimmerSweep 1.7s ease-in-out infinite;
-    border-radius: 6px;
-}
-.shimmer-card {
-    background: var(--card);
-    border: 1px solid var(--border2);
-    border-radius: 20px;
-    padding: 1.4rem;
-    margin: 1.2rem 0;
-}
-.sk-row { display:flex; gap:1.1rem; align-items:flex-start; }
-.sk-thumb { width:170px; min-width:170px; height:96px; border-radius:12px; }
-.sk-body { flex:1; }
-.sk-line { height:14px; margin-bottom:10px; }
-.sk-t1 { width:82%; height:18px; }
-.sk-t2 { width:52%; height:12px; }
-.sk-t3 { width:30%; height:20px; border-radius:20px; }
-.sk-stats { display:flex; gap:8px; margin-top:12px; }
-.sk-stat { flex:1; height:62px; border-radius:10px; }
-.sk-opts { height:44px; border-radius:12px; margin-top:14px; }
-
-/* Fetch indicator */
-.fetch-row {
-    display: flex; align-items: center; gap: 8px;
-    margin-bottom: 0.7rem;
-    animation: fadeIn 0.3s ease;
-}
-.fetch-dot {
-    width:8px; height:8px; border-radius:50%;
-    background: var(--accent);
-    animation: fetchPulse 1.3s ease-in-out infinite;
-}
-@keyframes fetchPulse {
-    0%,100% { opacity:1; transform:scale(1); box-shadow:0 0 0 0 rgba(255,90,31,0.5); }
-    50%      { opacity:.7; transform:scale(1.3); box-shadow:0 0 0 6px rgba(255,90,31,0); }
-}
-.fetch-txt { font-size:0.8rem; color:var(--muted); font-weight:500; }
-.fetch-step { color:var(--accent); font-weight:600; }
-
-/* ══════════════════════════════
-   STATUS CARDS
-══════════════════════════════ */
-.ready-wrap {
-    background: linear-gradient(135deg, #041710 0%, #061d14 100%);
-    border: 1.5px solid rgba(16,217,124,.28);
-    border-radius: 16px; padding: 1rem 1.2rem;
-    margin: 0.5rem 0;
-    box-shadow: 0 0 32px rgba(16,217,124,.08);
-    animation: readyPop 0.55s cubic-bezier(0.34,1.56,.64,1) both;
-}
-@keyframes readyPop {
-    from { opacity:0; transform:scale(0.93); }
-    to   { opacity:1; transform:scale(1);    }
-}
-.ready-row { display:flex; align-items:center; gap:10px; }
-.ready-ico {
-    width:38px; height:38px; border-radius:50%;
-    background: rgba(16,217,124,.12);
-    border: 1px solid rgba(16,217,124,.25);
-    display:flex; align-items:center; justify-content:center;
-    font-size:1.1rem; flex-shrink:0;
-}
-.ready-title { font-size:0.95rem; font-weight:800; color:var(--green); }
-.ready-file  { font-family:var(--mono); font-size:0.77rem; color:#5efaa3; margin-top:1px; }
-.ready-meta  { font-size:0.72rem; color:var(--muted); margin-top:2px; }
-
-.err-wrap {
-    background: linear-gradient(135deg, #140508, #100306);
-    border: 1px solid rgba(255,59,92,.25);
-    border-radius: 14px; padding: 1rem 1.1rem;
-    animation: fadeIn 0.3s ease;
-}
-.err-title { font-size:0.85rem; font-weight:700; color:var(--red); margin-bottom:3px; }
-.err-body  { font-size:0.8rem; color:#ff8fa0; line-height:1.6; }
-.tip-wrap {
-    background: var(--card);
-    border: 1px solid var(--border2);
-    border-left: 3px solid var(--accent);
-    border-radius: 10px; padding: 0.85rem 1rem;
-    margin-top: 0.5rem;
-    font-size: 0.79rem; color:#7a9ab8; line-height:1.7;
-}
-.tip-wrap b { color: var(--accent2); }
-.warn-wrap {
-    background: #0d0a00;
-    border: 1px solid rgba(255,180,0,.2);
-    border-radius: 10px; padding: 0.7rem 0.9rem;
-    font-size:0.78rem; color:#fcd34d; margin:0.4rem 0;
+/* ════════════════════════════════════════
+   OPTIONS PANEL (below result card)
+════════════════════════════════════════ */
+.options-panel {
+    background: var(--card2);
+    border: 1.5px solid var(--border2);
+    border-top: none;
+    border-radius: 0 0 var(--r-card) var(--r-card);
+    padding: 1.1rem 1.4rem 1.4rem;
+    margin-top: -2px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    animation: riseIn 0.4s 0.05s cubic-bezier(0.22,1,0.36,1) both;
 }
 
-/* Download button (main CTA inside result) */
-.stDownloadButton > button {
+/* ════════════════════════════════════════
+   SELECTBOX OVERRIDES
+════════════════════════════════════════ */
+div[data-testid="stSelectbox"] label {
+    color: var(--muted) !important;
+    font-size: 0.68rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.09em !important;
+    text-transform: uppercase !important;
+    font-family: var(--font) !important;
+    margin-bottom: 4px !important;
+}
+div[data-testid="stSelectbox"] > div > div {
+    background: var(--surface) !important;
+    color: var(--text) !important;
+    border: 1.5px solid var(--border2) !important;
+    border-radius: 10px !important;
+    font-family: var(--font) !important;
+    font-size: 0.86rem !important;
+    min-height: 42px !important;
+    transition: border-color .2s !important;
+}
+div[data-testid="stSelectbox"] > div > div:hover {
+    border-color: var(--border3) !important;
+}
+
+/* ════════════════════════════════════════
+   CHECKBOX
+════════════════════════════════════════ */
+.stCheckbox label {
+    color: var(--text2) !important;
+    font-size: 0.82rem !important;
+    font-weight: 500 !important;
+    gap: 8px !important;
+}
+.stCheckbox [data-testid="stCheckbox"] > label > div:first-child {
+    border: 1.5px solid var(--border3) !important;
+    background: var(--surface) !important;
+    border-radius: 5px !important;
+}
+
+/* ════════════════════════════════════════
+   DOWNLOAD BUTTON (primary CTA)
+════════════════════════════════════════ */
+.udp-dl-btn button {
     width: 100% !important;
     height: 52px !important;
-    background: linear-gradient(135deg, #10d97c 0%, #05b860 100%) !important;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: var(--r-btn) !important;
+    font-family: var(--display) !important;
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.02em !important;
+    box-shadow: 0 4px 20px rgba(249,95,26,0.35), inset 0 1px 0 rgba(255,255,255,0.12) !important;
+    transition: all 0.22s cubic-bezier(0.34,1.56,.64,1) !important;
+    margin-top: 0.2rem !important;
+}
+.udp-dl-btn button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 28px rgba(249,95,26,0.5), inset 0 1px 0 rgba(255,255,255,0.15) !important;
+}
+.udp-dl-btn button:active { transform: translateY(0) scale(0.98) !important; }
+
+/* ════════════════════════════════════════
+   SAVE FILE BUTTON (after download)
+════════════════════════════════════════ */
+.stDownloadButton > button {
+    width: 100% !important;
+    height: 56px !important;
+    background: linear-gradient(135deg, var(--green) 0%, var(--green2) 100%) !important;
     color: #021a0e !important;
     border: none !important;
-    border-radius: 14px !important;
-    font-family: var(--font) !important;
+    border-radius: var(--r-btn) !important;
+    font-family: var(--display) !important;
     font-size: 1rem !important;
     font-weight: 800 !important;
     letter-spacing: 0.02em !important;
-    box-shadow: 0 4px 24px rgba(16,217,124,.35) !important;
-    transition: all 0.25s cubic-bezier(0.34,1.56,.64,1) !important;
-    margin-top: 0.3rem !important;
+    box-shadow: 0 4px 24px rgba(0,232,123,0.3), inset 0 1px 0 rgba(255,255,255,0.15) !important;
+    transition: all 0.22s cubic-bezier(0.34,1.56,.64,1) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    padding: 0 1.5rem !important;
 }
 .stDownloadButton > button:hover {
     transform: translateY(-2px) !important;
-    box-shadow: 0 8px 32px rgba(16,217,124,.5) !important;
+    box-shadow: 0 8px 32px rgba(0,232,123,0.45) !important;
+}
+.stDownloadButton > button:active { transform: scale(0.98) !important; }
+
+/* ════════════════════════════════════════
+   READY / ERROR / WARN CARDS
+════════════════════════════════════════ */
+.ready-card {
+    background: linear-gradient(135deg, #021408 0%, #031b0f 100%);
+    border: 1.5px solid rgba(0,232,123,0.22);
+    border-radius: 14px;
+    padding: 1.1rem 1.3rem;
+    margin: 0.8rem 0 0.5rem;
+    box-shadow: 0 0 40px rgba(0,232,123,0.07);
+    animation: readyPop 0.5s cubic-bezier(0.34,1.56,.64,1) both;
+}
+@keyframes readyPop {
+    from { opacity: 0; transform: scale(0.94); }
+    to   { opacity: 1; transform: scale(1); }
+}
+.ready-inner { display: flex; align-items: center; gap: 12px; }
+.ready-check {
+    width: 40px; height: 40px; flex-shrink: 0;
+    border-radius: 50%;
+    background: rgba(0,232,123,0.12);
+    border: 1.5px solid rgba(0,232,123,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+    box-shadow: 0 0 16px rgba(0,232,123,0.15);
+}
+.ready-label { font-family: var(--display) !important; font-size: 1rem; font-weight: 800; color: var(--green); }
+.ready-file  { font-family: var(--mono) !important; font-size: 0.72rem; color: #4dffa0; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 440px; }
+.ready-meta  { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+
+.err-card {
+    background: linear-gradient(135deg, #120306, #0e0205);
+    border: 1.5px solid rgba(255,59,92,0.2);
+    border-radius: 14px;
+    padding: 1.1rem 1.3rem;
+    margin: 0.8rem 0;
+    animation: fadeIn .3s ease;
+}
+.err-title { font-size: 0.88rem; font-weight: 700; color: var(--red); margin-bottom: 5px; display: flex; align-items: center; gap: 6px; }
+.err-body  { font-size: 0.79rem; color: #ff8fa0; line-height: 1.7; }
+
+.tip-card {
+    background: var(--card);
+    border: 1px solid var(--border2);
+    border-left: 3px solid var(--accent2);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    margin-top: 0.5rem;
+    font-size: 0.78rem; color: var(--text2); line-height: 1.7;
+}
+.tip-card b { color: var(--accent2); }
+.tip-card code { background: var(--dim); padding: 1px 6px; border-radius: 4px; font-family: var(--mono) !important; font-size: 0.75rem; color: var(--accent3); }
+
+.warn-card {
+    background: rgba(255,180,0,0.04);
+    border: 1px solid rgba(255,180,0,0.18);
+    border-radius: 10px;
+    padding: 0.7rem 1rem;
+    margin: 0.5rem 0;
+    font-size: 0.78rem; color: #fcd34d; line-height: 1.6;
 }
 
-/* Progress bar */
-.stProgress > div > div > div { background: linear-gradient(90deg, var(--accent), var(--accent2)) !important; }
-.stProgress > div > div { background: var(--border) !important; border-radius: 99px !important; }
+/* ════════════════════════════════════════
+   PROGRESS BAR
+════════════════════════════════════════ */
+.stProgress > div > div > div {
+    background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3)) !important;
+    border-radius: 99px !important;
+    transition: width 0.3s ease !important;
+}
+.stProgress > div > div {
+    background: var(--border) !important;
+    border-radius: 99px !important;
+    height: 6px !important;
+}
+.stProgress > div { padding: 0 !important; }
 
-/* History */
-.hist-title { font-size:0.7rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; margin:1.6rem 0 0.6rem; }
+/* Speed indicator */
+.speed-bar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 0; font-size: 0.78rem;
+}
+.speed-val { color: var(--blue); font-weight: 700; font-family: var(--mono) !important; }
+.eta-val   { color: var(--purple); font-weight: 700; font-family: var(--mono) !important; }
+.speed-sep { color: var(--border3); }
+
+/* ════════════════════════════════════════
+   HISTORY
+════════════════════════════════════════ */
+.hist-header {
+    font-size: 0.68rem; font-weight: 700;
+    color: var(--muted); text-transform: uppercase; letter-spacing: .12em;
+    margin: 2rem 0 0.7rem;
+    display: flex; align-items: center; gap: 8px;
+}
+.hist-header::after {
+    content: ''; flex: 1; height: 1px;
+    background: var(--border);
+}
 .hist-item {
-    display:flex; align-items:center; gap:10px;
-    background: var(--card); border:1px solid var(--border);
-    border-radius:12px; padding:0.6rem 0.8rem;
-    margin-bottom:5px;
-    transition: border-color .2s;
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 0.65rem 0.9rem;
+    margin-bottom: 6px;
+    transition: border-color .2s, background .2s;
+    cursor: default;
 }
-.hist-item:hover { border-color: var(--border2); }
-.hist-thumb { width:46px; height:30px; border-radius:6px; object-fit:cover; background:var(--dim); flex-shrink:0; }
-.hist-name  { font-size:0.78rem; color:#b0c4d8; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
-.hist-meta  { font-size:0.65rem; color:var(--muted); white-space:nowrap; }
+.hist-item:hover { border-color: var(--border3); background: var(--card2); }
+.hist-thumb {
+    width: 48px; height: 30px;
+    border-radius: 6px; object-fit: cover;
+    background: var(--dim); flex-shrink: 0;
+    border: 1px solid var(--border);
+}
+.hist-thumb-ph {
+    width: 48px; height: 30px;
+    border-radius: 6px; flex-shrink: 0;
+    background: var(--dim); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; color: var(--muted);
+}
+.hist-name { font-size: 0.78rem; color: var(--text2); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.hist-meta { font-size: 0.64rem; color: var(--muted); white-space: nowrap; text-align: right; }
+.hist-site { font-weight: 700; color: var(--text2); }
 
-/* Checkbox */
-.stCheckbox label { color:var(--muted) !important; font-size:0.82rem !important; }
+/* ════════════════════════════════════════
+   EMPTY STATE
+════════════════════════════════════════ */
+.empty-state {
+    text-align: center;
+    padding: 3rem 0 2rem;
+    animation: fadeIn .5s ease;
+}
+.empty-icon { font-size: 3rem; opacity: 0.08; margin-bottom: 0.8rem; }
+.empty-title { color: var(--muted); font-size: 0.9rem; font-weight: 600; margin-bottom: 0.4rem; }
+.empty-sites { color: var(--border3); font-size: 0.72rem; line-height: 2; }
+.empty-sites span { color: var(--border2); margin: 0 3px; }
 
-@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+/* ════════════════════════════════════════
+   FOOTER
+════════════════════════════════════════ */
+.udp-footer {
+    text-align: center;
+    padding: 2rem 0 1rem;
+    border-top: 1px solid var(--border);
+    margin-top: 3rem;
+    color: var(--border3);
+    font-size: 0.7rem;
+    line-height: 2;
+}
+.udp-footer strong { color: var(--border2); }
 
-/* Sidebar */
+/* ════════════════════════════════════════
+   SIDEBAR
+════════════════════════════════════════ */
 section[data-testid="stSidebar"] {
     background: var(--surface) !important;
     border-right: 1px solid var(--border) !important;
 }
-section[data-testid="stSidebar"] .stMarkdown p { color:var(--muted) !important; font-size:0.8rem !important; }
 
-/* Footer */
-.udp-footer {
-    text-align:center; padding:2rem 0 1rem;
-    border-top:1px solid var(--border);
-    margin-top:2.5rem;
-    color:var(--dim);
-    font-size:0.72rem; line-height:1.9;
-}
-
-/* expander */
-details summary { color: var(--muted) !important; font-size: 0.8rem !important; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 </style>
 """, unsafe_allow_html=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  PURE FUNCTIONS
+#  UTILITY FUNCTIONS
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @st.cache_resource(show_spinner=False)
 def check_ffmpeg():
     try:
-        r = subprocess.run(["ffmpeg","-version"], capture_output=True, text=True, timeout=5)
+        r = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True, timeout=5)
         return r.returncode == 0
     except Exception:
         return False
 
 
+def proxy_thumbnail(url):
+    """Fetch thumbnail server-side to bypass CORS/hotlink restrictions."""
+    if not url:
+        return None
+    try:
+        req = urllib.request.Request(url, headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Referer': 'https://www.google.com/',
+        })
+        with urllib.request.urlopen(req, timeout=6) as r:
+            data = r.read()
+        ext = url.split('?')[0].rsplit('.', 1)[-1].lower()
+        mime = {'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+                'webp': 'image/webp', 'gif': 'image/gif'}.get(ext, 'image/jpeg')
+        b64 = base64.b64encode(data).decode()
+        return f"data:{mime};base64,{b64}"
+    except Exception:
+        return None
+
+
 def base_opts():
     return {
         'quiet': True, 'no_warnings': True,
-        'extractor_args': {'youtube': {'player_js_version':'actual','player_client':'web_safari'}},
+        'extractor_args': {
+            'youtube': {'player_js_version': 'actual', 'player_client': 'web_safari'},
+            'instagram': {'api': ['graphql', 'web']},
+        },
         'headers': {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                           'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5',
-            'Referer': 'https://www.youtube.com/',
+            'Referer': 'https://www.google.com/',
         },
         'geo_bypass': True,
     }
 
 
 def fetch_info(url):
-    opts = base_opts(); opts['skip_download'] = True
+    opts = base_opts()
+    opts['skip_download'] = True
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
-            info  = ydl.extract_info(url, download=False)
-            fmts  = info.get('formats', [])
-            ext   = info.get('extractor','generic').lower()
-            heights = sorted({f['height'] for f in fmts if f.get('height') and f['height']>0}, reverse=True)
-            has_v = any(f.get('vcodec')!='none' for f in fmts)
-            has_a = any(f.get('acodec')!='none' for f in fmts)
-            has_i = any(f.get('ext') in ('jpg','jpeg','png','webp') for f in fmts)
-            ct = 'photo' if (has_i and not has_v) else 'gallery' if (not has_v and not has_a and not has_i and info.get('entries')) else 'video'
+            info = ydl.extract_info(url, download=False)
+            fmts = info.get('formats', [])
+            ext  = info.get('extractor', 'generic').lower()
+            heights = sorted({f['height'] for f in fmts if f.get('height') and f['height'] > 0}, reverse=True)
+            has_v = any(f.get('vcodec') != 'none' for f in fmts)
+            has_a = any(f.get('acodec') != 'none' for f in fmts)
+            has_i = any(f.get('ext') in ('jpg', 'jpeg', 'png', 'webp') for f in fmts)
+            ct = ('photo'   if (has_i and not has_v) else
+                  'gallery' if (not has_v and not has_a and not has_i and info.get('entries')) else 'video')
+
+            # Fetch thumbnail server-side
+            thumb_url = info.get('thumbnail', '')
+            thumb_b64 = proxy_thumbnail(thumb_url)
+
             return {
-                'title':      info.get('title','Unknown'),
-                'uploader':   info.get('uploader', info.get('channel', info.get('uploader_id','Unknown'))),
+                'title':      info.get('title', 'Unknown'),
+                'uploader':   info.get('uploader', info.get('channel', info.get('uploader_id', 'Unknown'))),
                 'duration':   info.get('duration') or 0,
-                'thumbnail':  info.get('thumbnail',''),
+                'thumbnail':  thumb_url,
+                'thumb_b64':  thumb_b64,
                 'view_count': info.get('view_count') or 0,
                 'like_count': info.get('like_count') or 0,
                 'filesize':   info.get('filesize_approx') or 0,
@@ -523,7 +721,7 @@ def fetch_info(url):
                 'has_height_formats': bool(heights),
                 'has_video':  has_v, 'has_audio': has_a, 'has_image': has_i,
                 'content_type': ct,
-                'entries':    info.get('entries',[]),
+                'entries':    info.get('entries', []),
                 'heights':    heights,
                 'has_subs':   bool(info.get('subtitles') or info.get('automatic_captions')),
                 'success': True,
@@ -534,85 +732,100 @@ def fetch_info(url):
 
 def fmt_dur(s):
     if not s: return '—'
-    m,s=divmod(int(s),60); h,m=divmod(m,60)
+    m, s = divmod(int(s), 60)
+    h, m = divmod(m, 60)
     return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
+
 
 def fmt_sz(b):
     if not b: return '—'
-    b=float(b)
-    for u in ['B','KB','MB','GB']:
-        if b<1024: return f"{b:.1f} {u}"
-        b/=1024
+    b = float(b)
+    for u in ['B', 'KB', 'MB', 'GB']:
+        if b < 1024: return f"{b:.1f} {u}"
+        b /= 1024
     return f"{b:.1f} TB"
 
+
 def fmt_n(n):
-    if not n: return '0'
-    n=float(n)
-    if n>=1e9: return f"{n/1e9:.1f}B"
-    if n>=1e6: return f"{n/1e6:.1f}M"
-    if n>=1e3: return f"{n/1e3:.1f}K"
+    if not n: return '—'
+    n = float(n)
+    if n >= 1e9: return f"{n/1e9:.1f}B"
+    if n >= 1e6: return f"{n/1e6:.1f}M"
+    if n >= 1e3: return f"{n/1e3:.1f}K"
     return str(int(n))
 
-def clean_name(t, mx=80):
-    if not t: t='download'
+
+def clean_name(t, mx=72):
+    if not t: t = 'download'
     s = ''.join(c if c.isalnum() or c in ' ._-' else '_' for c in t).strip('._')
-    if len(s)>mx:
-        s = s[:mx-7]+'_'+hashlib.md5(s.encode()).hexdigest()[:6]
+    if len(s) > mx:
+        s = s[:mx - 7] + '_' + hashlib.md5(s.encode()).hexdigest()[:6]
     return s or 'download'
 
+
 def site_name(ext):
-    for k,n in [('youtube','YouTube'),('instagram','Instagram'),('facebook','Facebook'),
-                ('tiktok','TikTok'),('twitter','Twitter/X'),('reddit','Reddit'),
-                ('vimeo','Vimeo'),('twitch','Twitch'),('dailymotion','Dailymotion')]:
+    for k, n in [('youtube', 'YouTube'), ('instagram', 'Instagram'), ('facebook', 'Facebook'),
+                 ('tiktok', 'TikTok'), ('twitter', 'Twitter/X'), ('reddit', 'Reddit'),
+                 ('vimeo', 'Vimeo'), ('twitch', 'Twitch'), ('dailymotion', 'Dailymotion'),
+                 ('soundcloud', 'SoundCloud')]:
         if k in ext: return n
-    return ext.replace('ie','').title()
+    return ext.replace('ie', '').title() or 'Unknown'
+
 
 def type_icon(ct):
-    return {'video':'▶','photo':'◈','gallery':'⊞','audio':'♫'}.get(ct,'◉')
+    return {'video': '▶', 'photo': '◈', 'gallery': '⊞', 'audio': '♫'}.get(ct, '◉')
+
 
 def get_fmt_str(quality, mode, ffmpeg_ok, info):
-    ct = info.get('content_type','video')
-    if ct=='photo': return 'best'
-    if mode=='Audio Only':
+    ct = info.get('content_type', 'video')
+    if ct == 'photo': return 'best'
+    if mode == 'Audio Only':
         return 'bestaudio/best' if ffmpeg_ok else 'bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio'
     if not info.get('is_youtube') or not info.get('has_height_formats'):
         return 'best/bestvideo+bestaudio'
-    hmap = {'Best':None,'4K (2160p)':2160,'1440p':1440,'1080p':1080,'720p':720,'480p':480,'360p':360}
+    hmap = {'Best': None, '4K (2160p)': 2160, '1440p': 1440, '1080p': 1080,
+            '720p': 720, '480p': 480, '360p': 360}
     th = hmap.get(quality)
     if ffmpeg_ok:
-        if th: return (f"bestvideo[height<={th}][vcodec!*=av01]+bestaudio[acodec!*=opus]"
-                       f"/bestvideo[height<={th}]+bestaudio/best[height<={th}]")
+        if th:
+            return (f"bestvideo[height<={th}][vcodec!*=av01]+bestaudio[acodec!*=opus]"
+                    f"/bestvideo[height<={th}]+bestaudio/best[height<={th}]")
         return 'bestvideo[vcodec!*=av01]+bestaudio[acodec!*=opus]/bestvideo+bestaudio/best'
     return f'best[height<={th}]/best' if th else 'best/bestvideo+bestaudio'
 
+
 def build_opts(fmt, outdir, hook, ffmpeg_ok, mode, info, subs=False, thumb=False):
     opts = base_opts()
-    opts.update({'format':fmt,
-                 'outtmpl': os.path.join(outdir, clean_name(info.get('title','download'))+'.%(ext)s'),
-                 'progress_hooks':[hook], 'noplaylist':True,
-                 'retries':10, 'fragment_retries':10, 'continue_dl':True})
-    ct = info.get('content_type','video'); post=[]
-    if ct=='photo':
-        if info.get('entries'): opts['noplaylist']=False
-    elif ffmpeg_ok and mode=='Audio Only':
-        post.append({'key':'FFmpegExtractAudio','preferredcodec':'mp3','preferredquality':'192'})
-        if thumb: post.append({'key':'EmbedThumbnail'})
-    elif ffmpeg_ok and mode!='Audio Only' and '+' in fmt:
-        opts['merge_output_format']='mp4'
-    if ffmpeg_ok and subs and mode!='Audio Only':
-        opts.update({'writesubtitles':True,'writeautomaticsub':True,'subtitleslangs':['en','en-US']})
-        post.append({'key':'FFmpegSubtitlesConvertor','format':'srt'})
-    if post: opts['postprocessors']=post
+    opts.update({
+        'format': fmt,
+        'outtmpl': os.path.join(outdir, clean_name(info.get('title', 'download')) + '.%(ext)s'),
+        'progress_hooks': [hook], 'noplaylist': True,
+        'retries': 10, 'fragment_retries': 10, 'continue_dl': True,
+    })
+    ct = info.get('content_type', 'video')
+    post = []
+    if ct == 'photo':
+        if info.get('entries'): opts['noplaylist'] = False
+    elif ffmpeg_ok and mode == 'Audio Only':
+        post.append({'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '192'})
+        if thumb: post.append({'key': 'EmbedThumbnail'})
+    elif ffmpeg_ok and mode != 'Audio Only' and '+' in fmt:
+        opts['merge_output_format'] = 'mp4'
+    if ffmpeg_ok and subs and mode != 'Audio Only':
+        opts.update({'writesubtitles': True, 'writeautomaticsub': True, 'subtitleslangs': ['en', 'en-US']})
+        post.append({'key': 'FFmpegSubtitlesConvertor', 'format': 'srt'})
+    if post: opts['postprocessors'] = post
     return opts
 
+
 def add_history(info, fname, fsize):
-    if 'history' not in st.session_state: st.session_state.history=[]
-    st.session_state.history.insert(0,{
-        'title':    info.get('title','')[:55],
-        'uploader': info.get('uploader',''),
-        'thumb':    info.get('thumbnail',''),
-        'site':     site_name(info.get('extractor','generic')),
-        'type':     info.get('content_type','video'),
+    if 'history' not in st.session_state: st.session_state.history = []
+    st.session_state.history.insert(0, {
+        'title':    info.get('title', '')[:55],
+        'uploader': info.get('uploader', ''),
+        'thumb_b64': info.get('thumb_b64', ''),
+        'site':     site_name(info.get('extractor', 'generic')),
+        'type':     info.get('content_type', 'video'),
         'fname':    fname, 'fsize': fmt_sz(fsize),
         'ts':       datetime.now().strftime('%H:%M'),
     })
@@ -622,9 +835,11 @@ def add_history(info, fname, fsize):
 # ═══════════════════════════════════════════════════════════════════════════════
 #  SESSION STATE
 # ═══════════════════════════════════════════════════════════════════════════════
-for k,v in {'last_url':'','video_info':None,'is_loading':False,
-            'download_error':None,'clear_t':0,'history':[],'url_val':''}.items():
-    if k not in st.session_state: st.session_state[k]=v
+for k, v in {
+    'last_url': '', 'video_info': None, 'is_loading': False,
+    'download_error': None, 'clear_t': 0, 'history': [], 'url_val': ''
+}.items():
+    if k not in st.session_state: st.session_state[k] = v
 
 ffmpeg_ok = check_ffmpeg()
 
@@ -632,27 +847,28 @@ ffmpeg_ok = check_ffmpeg()
 #  SIDEBAR
 # ═══════════════════════════════════════════════════════════════════════════════
 with st.sidebar:
-    st.markdown("### System")
+    st.markdown("### ⚙️ System")
     if ffmpeg_ok:
-        st.success("✓ FFmpeg ready")
+        st.success("✓ FFmpeg ready — full quality merging enabled")
     else:
-        st.warning("⚠ FFmpeg missing")
+        st.warning("⚠ FFmpeg missing — add to packages.txt")
     st.markdown("---")
-    st.markdown("### Setup Files")
+    st.markdown("### 📦 Setup Files")
     st.code("requirements.txt:\nstreamlit\nyt-dlp\n\npackages.txt:\nffmpeg", language="text")
     st.markdown("---")
     if st.session_state.history:
-        st.markdown("### Recent")
+        st.markdown("### 🕒 Recent")
         for h in st.session_state.history[:5]:
+            thumb_html = f'<img class="hist-thumb" src="{h["thumb_b64"]}">' if h.get('thumb_b64') else '<div class="hist-thumb-ph">◈</div>'
             st.markdown(f"""
             <div class="hist-item">
-                {'<img class="hist-thumb" src="'+h['thumb']+'">' if h.get('thumb') else '<div class="hist-thumb"></div>'}
+                {thumb_html}
                 <div class="hist-name">{type_icon(h['type'])} {h['title']}</div>
                 <div class="hist-meta">{h['fsize']}</div>
             </div>
             """, unsafe_allow_html=True)
     st.markdown("---")
-    st.caption("Only download content you own or have rights to.")
+    st.caption("⚖️ Only download content you own or have rights to use.")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -660,6 +876,7 @@ with st.sidebar:
 # ═══════════════════════════════════════════════════════════════════════════════
 st.markdown("""
 <div class="udp-header">
+    <div class="udp-icon">⬇</div>
     <div class="udp-wordmark">Universal Downloader</div>
     <div class="udp-sub">Videos · Photos · Reels · Stories · 1800+ Sites</div>
 </div>
@@ -668,42 +885,34 @@ st.markdown("""
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  SEARCH BAR  (paste/clear inside the bar)
+#  SEARCH BAR
 # ═══════════════════════════════════════════════════════════════════════════════
 url_has_text = bool(st.session_state.url_val)
 
-# Inject CSS class on the columns block
-st.markdown('<div class="udp-bar">', unsafe_allow_html=True)
-
-# col widths: input | paste-or-clear | go-button
+st.markdown('<div class="search-wrap searchbar-cols">', unsafe_allow_html=True)
 c_input, c_action, c_go = st.columns([10, 1.1, 1.1])
 
 with c_input:
-    st.markdown('<div class="udp-search-field">', unsafe_allow_html=True)
     url_input = st.text_input(
         "", key=f"url_{st.session_state.clear_t}",
-        placeholder="  Paste a URL from YouTube, TikTok, Instagram, Facebook…",
+        placeholder="  Paste a URL — YouTube, TikTok, Instagram, Facebook…",
         label_visibility="collapsed"
     )
-    st.markdown('</div>', unsafe_allow_html=True)
-    # sync to session
     if url_input != st.session_state.url_val:
         st.session_state.url_val = url_input
 
 with c_action:
-    st.markdown('<div class="udp-side-btn">', unsafe_allow_html=True)
+    st.markdown('<div class="sb-action">', unsafe_allow_html=True)
     if url_has_text:
-        # Clear button (X)
-        if st.button("✕", key="clear_btn", help="Clear URL"):
-            st.session_state.url_val   = ''
-            st.session_state.last_url  = ''
-            st.session_state.video_info= None
-            st.session_state.is_loading= False
-            st.session_state.clear_t  += 1
+        if st.button("✕", key="clear_btn", help="Clear"):
+            st.session_state.url_val    = ''
+            st.session_state.last_url   = ''
+            st.session_state.video_info = None
+            st.session_state.is_loading = False
+            st.session_state.clear_t   += 1
             st.rerun()
     else:
-        # Paste button
-        if st.button("⎘", key="paste_btn", help="Paste from clipboard"):
+        if st.button("⎘", key="paste_btn", help="Paste"):
             try:
                 import pyperclip
                 clip = pyperclip.paste()
@@ -715,169 +924,197 @@ with c_action:
     st.markdown('</div>', unsafe_allow_html=True)
 
 with c_go:
-    st.markdown('<div class="udp-go-btn">', unsafe_allow_html=True)
-    analyze_clicked = st.button("⌕", key="go_btn", help="Analyze URL")
+    st.markdown('<div class="sb-go">', unsafe_allow_html=True)
+    analyze_clicked = st.button("⌕", key="go_btn", help="Analyze")
     st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
 
 url = st.session_state.url_val.strip()
 
-# Manual trigger via button OR auto-trigger on URL change
-trigger_fetch = (analyze_clicked and url and url != st.session_state.last_url) or \
-                (url and url != st.session_state.last_url and len(url) > 10)
+trigger_fetch = (
+    (analyze_clicked and url and url != st.session_state.last_url) or
+    (url and url != st.session_state.last_url and len(url) > 10)
+)
 
 if trigger_fetch:
-    st.session_state.last_url    = url
-    st.session_state.video_info  = None
+    st.session_state.last_url       = url
+    st.session_state.video_info     = None
     st.session_state.download_error = None
-    st.session_state.is_loading  = True
+    st.session_state.is_loading     = True
     st.rerun()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #  SHIMMER → FETCH → RESULT
 # ═══════════════════════════════════════════════════════════════════════════════
-SHIMMER_HTML = """
+SHIMMER = """
 <div class="fetch-row">
     <span class="fetch-dot"></span>
-    <span class="fetch-txt">Analyzing URL<span class="fetch-step"> · fetching metadata…</span></span>
+    <span class="fetch-txt">Analyzing URL <span class="fetch-step">· fetching metadata…</span></span>
 </div>
 <div class="shimmer-card">
     <div class="sk-row">
         <div class="sk-base sk-thumb"></div>
-        <div class="sk-body" style="flex:1">
-            <div class="sk-base sk-line sk-t1"></div>
-            <div class="sk-base sk-line sk-t2"></div>
-            <div class="sk-base sk-line sk-t3"></div>
+        <div class="sk-body">
+            <div class="sk-base sk-t1"></div>
+            <div class="sk-base sk-t2"></div>
+            <div class="sk-base sk-t3"></div>
             <div class="sk-stats">
                 <div class="sk-base sk-stat"></div>
-                <div class="sk-base sk-stat" style="animation-delay:.12s"></div>
-                <div class="sk-base sk-stat" style="animation-delay:.24s"></div>
+                <div class="sk-base sk-stat" style="animation-delay:.1s"></div>
+                <div class="sk-base sk-stat" style="animation-delay:.2s"></div>
             </div>
         </div>
     </div>
-    <div class="sk-base sk-opts" style="margin-top:14px"></div>
+    <div class="sk-divider"></div>
+    <div class="sk-base sk-opts"></div>
+    <div class="sk-base sk-btn"></div>
 </div>
 """
 
-# ── THE KEY FIX: render shimmer FIRST, then block on fetch ──
 if st.session_state.is_loading:
     slot = st.empty()
-    slot.markdown(SHIMMER_HTML, unsafe_allow_html=True)
-    # This blocking call happens AFTER shimmer is already rendered to the browser
+    slot.markdown(SHIMMER, unsafe_allow_html=True)
     result = fetch_info(st.session_state.last_url)
     st.session_state.video_info  = result
     st.session_state.is_loading  = False
     slot.empty()
     st.rerun()
 
+
 # ═══════════════════════════════════════════════════════════════════════════════
 #  ERROR STATE
 # ═══════════════════════════════════════════════════════════════════════════════
 if st.session_state.video_info and not st.session_state.video_info.get('success'):
-    err = st.session_state.video_info.get('error','Unknown error')
+    err = st.session_state.video_info.get('error', 'Unknown error')
     st.markdown(f"""
-    <div class="err-wrap">
+    <div class="err-card">
         <div class="err-title">✕ Failed to fetch</div>
         <div class="err-body">{err}</div>
     </div>
     """, unsafe_allow_html=True)
-    if 'authentication' in err.lower() or 'reddit' in err.lower():
-        st.markdown('<div class="tip-wrap"><b>Reddit</b> requires authentication. Try a direct media URL or another platform.</div>', unsafe_allow_html=True)
-    elif 'no video' in err.lower():
-        st.markdown('<div class="tip-wrap"><b>Instagram photo post</b> detected. Switch mode to <b>Photo/Gallery</b> or use a Reel URL.</div>', unsafe_allow_html=True)
+    el = err.lower()
+    if 'authentication' in el or 'reddit' in el:
+        st.markdown('<div class="tip-card"><b>Reddit</b> requires authentication. Try a direct media URL or another platform.</div>', unsafe_allow_html=True)
+    elif 'no video' in el:
+        st.markdown('<div class="tip-card"><b>Instagram photo</b> detected. Switch mode to <b>Photo/Gallery</b> or use a Reel URL.</div>', unsafe_allow_html=True)
+    elif '403' in err:
+        st.markdown('<div class="tip-card">Platform blocked this server. Try lowering quality to <b>360p</b> or run the app <b>locally</b>.</div>', unsafe_allow_html=True)
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  RESULT CARD + INTEGRATED DOWNLOAD
+#  RESULT CARD
 # ═══════════════════════════════════════════════════════════════════════════════
 elif st.session_state.video_info and st.session_state.video_info.get('success'):
-    info = st.session_state.video_info
-    sname = site_name(info['extractor'])
-    ct    = info['content_type']
-    ci    = type_icon(ct)
-    hs    = info.get('heights', [])
-    qtop  = f" · {hs[0]}p top quality" if hs else ""
+    info   = st.session_state.video_info
+    sname  = site_name(info['extractor'])
+    ct     = info['content_type']
+    ci     = type_icon(ct)
+    hs     = info.get('heights', [])
+    qtop   = f"· {hs[0]}p top quality" if hs else "· quality auto-adjusted"
 
-    subs_badge = '<span class="badge b-subs">CC</span>' if info.get('has_subs') else ''
-    non_yt_note = ('<div style="color:var(--muted);font-size:0.7rem;margin-top:3px">Quality auto-adjusted for this platform</div>'
-                   if not info.get('is_youtube') and ct=='video' and info.get('has_video') else '')
+    # Thumbnail: prefer proxied base64, fallback to direct URL, then placeholder
+    thumb_b64 = info.get('thumb_b64', '')
+    thumb_src = thumb_b64 or info.get('thumbnail', '')
+    if thumb_src:
+        thumb_html = f'<img src="{thumb_src}" alt="thumbnail" loading="lazy" onerror="this.parentElement.innerHTML=\'<div class=rc-thumb-placeholder><span>◈</span><span>No preview</span></div>\'">'
+    else:
+        thumb_html = '<div class="rc-thumb-placeholder"><span>◈</span><span>No preview</span></div>'
 
-    # ── Main result card ──────────────────────────────────────────────────────
-    thumb_html = (f'<img src="{info["thumbnail"]}" style="width:100%;height:100%;object-fit:cover;border-radius:12px">'
-                  if info.get('thumbnail') else '')
+    subs_badge = '<span class="badge b-subs">CC SUBS</span>' if info.get('has_subs') else ''
+    non_yt_badge = '<span class="badge b-note">◈ Auto Quality</span>' if not info.get('is_youtube') and ct == 'video' else ''
 
+    # ── Result card ──────────────────────────────────────────────────────────
     st.markdown(f"""
     <div class="result-card">
         <div class="rc-top">
             <div class="rc-thumb-wrap">{thumb_html}</div>
             <div class="rc-info">
                 <div class="rc-title">{info['title']}</div>
-                <div class="rc-uploader">@{info['uploader']} &nbsp;·&nbsp; {fmt_dur(info['duration'])}{qtop}</div>
+                <div class="rc-uploader">
+                    <span>@{info['uploader']}</span>
+                    <span class="sep">·</span>
+                    <span>{fmt_dur(info['duration'])}</span>
+                    <span class="sep">·</span>
+                    <span>{qtop}</span>
+                </div>
                 <div class="rc-badges">
                     <span class="badge b-platform">{sname}</span>
                     <span class="badge b-type">{ci} {ct.title()}</span>
-                    {subs_badge}
+                    {subs_badge}{non_yt_badge}
                 </div>
-                {non_yt_note}
                 <div class="rc-stats">
-                    <div class="stat-pill"><div class="stat-val">{fmt_sz(info['filesize'])}</div><div class="stat-lbl">Est. Size</div></div>
-                    <div class="stat-pill"><div class="stat-val">{fmt_n(info['view_count'])}</div><div class="stat-lbl">Views</div></div>
-                    <div class="stat-pill"><div class="stat-val">{fmt_n(info['like_count'])}</div><div class="stat-lbl">Likes</div></div>
+                    <div class="stat-pill">
+                        <div class="stat-val">{fmt_sz(info['filesize'])}</div>
+                        <div class="stat-lbl">Est. Size</div>
+                    </div>
+                    <div class="stat-pill">
+                        <div class="stat-val">{fmt_n(info['view_count'])}</div>
+                        <div class="stat-lbl">Views</div>
+                    </div>
+                    <div class="stat-pill">
+                        <div class="stat-val">{fmt_n(info['like_count'])}</div>
+                        <div class="stat-lbl">Likes</div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Options + Download (integrated below the card) ────────────────────────
-    st.markdown('<div style="background:var(--card);border:1px solid var(--border2);border-radius:16px;padding:1rem 1.2rem;margin-top:-0.4rem">', unsafe_allow_html=True)
+    # ── Options panel ────────────────────────────────────────────────────────
+    st.markdown('<div class="options-panel">', unsafe_allow_html=True)
 
-    oc1, oc2, oc3 = st.columns([2, 2, 2])
+    oc1, oc2, oc3 = st.columns([2.2, 2.2, 1.6])
     with oc1:
-        mode = st.selectbox("Type", ["Auto Detect","Video","Audio Only","Photo/Gallery"], index=0, key="mode_sel")
+        mode = st.selectbox("Type", ["Auto Detect", "Video", "Audio Only", "Photo/Gallery"], index=0, key="mode_sel")
     with oc2:
-        if mode=="Audio Only":    qopts = ["Best","192kbps","128kbps"]
-        elif mode=="Photo/Gallery": qopts = ["Best","Original","High","Medium"]
-        else:                     qopts = ["Best","4K (2160p)","1440p","1080p","720p","480p","360p"]
+        if mode == "Audio Only":       qopts = ["Best", "192kbps", "128kbps"]
+        elif mode == "Photo/Gallery":  qopts = ["Best", "Original", "High", "Medium"]
+        else:                          qopts = ["Best", "4K (2160p)", "1440p", "1080p", "720p", "480p", "360p"]
         quality = st.selectbox("Quality", qopts, index=0, key="qual_sel")
     with oc3:
-        st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:2px'></div>", unsafe_allow_html=True)
         embed_subs  = st.checkbox("Subtitles", value=False, disabled=not ffmpeg_ok, key="subs_chk")
         embed_thumb = st.checkbox("Embed Art",  value=False, disabled=not ffmpeg_ok, key="thumb_chk")
 
     if not ffmpeg_ok:
-        st.markdown('<div class="warn-wrap" style="margin:0.3rem 0 0.6rem">⚠ FFmpeg missing — quality merging and subtitle embedding unavailable.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="warn-card">⚠ FFmpeg missing — quality merging & subtitle embedding unavailable. Add <code>ffmpeg</code> to packages.txt and redeploy.</div>', unsafe_allow_html=True)
 
-    st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)
+    st.markdown('<div style="height:6px"></div>', unsafe_allow_html=True)
+
     st.markdown('<div class="udp-dl-btn">', unsafe_allow_html=True)
     dl_clicked = st.button("⬇  Download Now", use_container_width=True, key="dl_btn")
-    st.markdown('</div></div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)  # close options-panel
 
     # ── Download logic ────────────────────────────────────────────────────────
     if dl_clicked:
-        prog = st.progress(0, text="Initialising…")
-        spd  = st.empty()
+        prog   = st.progress(0, text="Initialising…")
+        spd    = st.empty()
         dl_err = None; file_bytes = None; file_name = None; mime = "video/mp4"
 
         def hook(d):
-            if d['status']=='downloading':
-                raw   = d.get('_percent_str','0%').replace('%','').strip()
-                speed = d.get('_speed_str','—')
-                eta   = d.get('_eta_str','—')
+            if d['status'] == 'downloading':
+                raw   = d.get('_percent_str', '0%').replace('%', '').strip()
+                speed = d.get('_speed_str', '—')
+                eta   = d.get('_eta_str',   '—')
                 try:
                     pct = min(int(float(raw)), 99)
                     prog.progress(pct, text=f"Downloading… {pct}%")
-                    spd.markdown(
-                        f'<div style="font-size:.78rem;color:var(--muted);padding:2px 0">'
-                        f'⚡ <span style="color:#3b8bff;font-weight:600">{speed}</span>'
-                        f' &nbsp;·&nbsp; ⏱ <span style="color:#a78bfa;font-weight:600">{eta}</span></div>',
-                        unsafe_allow_html=True)
+                    spd.markdown(f"""
+                    <div class="speed-bar">
+                        ⚡ <span class="speed-val">{speed}</span>
+                        <span class="speed-sep">·</span>
+                        ⏱ ETA <span class="eta-val">{eta}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
                 except: pass
-            elif d['status']=='finished':
+            elif d['status'] == 'finished':
                 prog.progress(100, text="Post-processing…")
-                spd.markdown('<div style="font-size:.78rem;color:var(--green)">✓ Complete · finalising file…</div>',
-                             unsafe_allow_html=True)
+                spd.markdown('<div class="speed-bar" style="color:var(--green)">✓ Download complete — finalising file…</div>', unsafe_allow_html=True)
 
         try:
             with tempfile.TemporaryDirectory() as tmp:
@@ -885,86 +1122,109 @@ elif st.session_state.video_info and st.session_state.video_info.get('success'):
                 opts = build_opts(fmt, tmp, hook, ffmpeg_ok, mode, info, embed_subs, embed_thumb)
                 with yt_dlp.YoutubeDL(opts) as ydl:
                     ydl.download([url])
-                files = [f for f in os.listdir(tmp) if os.path.isfile(os.path.join(tmp,f))]
-                if not files: raise Exception("Download completed but no output file was created.")
+                files = [f for f in os.listdir(tmp) if os.path.isfile(os.path.join(tmp, f))]
+                if not files: raise Exception("Download completed but no output file was found.")
                 file_name = files[0]
                 fpath = os.path.join(tmp, file_name)
-                ext   = file_name.rsplit('.',1)[-1].lower()
-                mime  = {'mp3':'audio/mpeg','m4a':'audio/mp4','webm':'video/webm',
-                         'jpg':'image/jpeg','jpeg':'image/jpeg','png':'image/png','webp':'image/webp'}.get(ext,'video/mp4')
+                ext   = file_name.rsplit('.', 1)[-1].lower()
+                mime  = {'mp3': 'audio/mpeg', 'm4a': 'audio/mp4', 'webm': 'video/webm',
+                         'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
+                         'png': 'image/png', 'webp': 'image/webp'}.get(ext, 'video/mp4')
                 fsz = os.path.getsize(fpath)
-                if fsz > 500*1024*1024:
-                    st.markdown('<div class="warn-wrap">⚠ File >500 MB — Streamlit Cloud may struggle. Run locally for large files.</div>', unsafe_allow_html=True)
-                with open(fpath,'rb') as f: file_bytes=f.read()
+                if fsz > 500 * 1024 * 1024:
+                    st.markdown('<div class="warn-card">⚠ File is over 500 MB — Streamlit Cloud may struggle. Run locally for large files.</div>', unsafe_allow_html=True)
+                with open(fpath, 'rb') as f:
+                    file_bytes = f.read()
         except Exception as e:
             dl_err = str(e)
 
-        prog.empty(); spd.empty()
+        prog.empty()
+        spd.empty()
 
         if dl_err:
-            st.markdown(f'<div class="err-wrap"><div class="err-title">✕ Download Failed</div><div class="err-body">{dl_err}</div></div>',
-                        unsafe_allow_html=True)
+            st.markdown(f"""
+            <div class="err-card">
+                <div class="err-title">✕ Download Failed</div>
+                <div class="err-body">{dl_err}</div>
+            </div>
+            """, unsafe_allow_html=True)
             el = dl_err.lower()
             if '403' in dl_err or 'forbidden' in el:
-                st.markdown("""<div class="tip-wrap">
-                <b>YouTube 403 — Cloud IP Blocked</b><br>
-                Retry 2-3× · lower quality (360p/Audio) · or run locally:<br>
-                <code>pip install streamlit yt-dlp && streamlit run streamlit_app.py</code>
+                st.markdown("""
+                <div class="tip-card">
+                    <b>YouTube 403 — Cloud IP blocked.</b><br>
+                    Try 2–3 times · switch to lower quality (360p / Audio Only) · or run locally:<br>
+                    <code>pip install streamlit yt-dlp && streamlit run streamlit_app.py</code>
                 </div>""", unsafe_allow_html=True)
             elif 'requested format' in el:
-                st.markdown('<div class="tip-wrap"><b>Format unavailable.</b> Switch to <b>Best</b> quality or <b>Auto Detect</b>.</div>', unsafe_allow_html=True)
+                st.markdown('<div class="tip-card"><b>Format unavailable.</b> Switch to <b>Best</b> quality or <b>Auto Detect</b> mode.</div>', unsafe_allow_html=True)
             elif 'ffmpeg' in el or 'merging' in el:
-                st.markdown('<div class="tip-wrap"><b>FFmpeg missing.</b> Add <code>ffmpeg</code> to packages.txt and redeploy.</div>', unsafe_allow_html=True)
+                st.markdown('<div class="tip-card"><b>FFmpeg not found.</b> Add <code>ffmpeg</code> to packages.txt and redeploy.</div>', unsafe_allow_html=True)
             elif 'too long' in el or 'file name' in el:
-                st.markdown('<div class="tip-wrap"><b>Filename too long</b> — retry, auto-truncation is active.</div>', unsafe_allow_html=True)
+                st.markdown('<div class="tip-card"><b>Filename too long</b> — auto-truncation is active, please retry.</div>', unsafe_allow_html=True)
+
         elif file_bytes:
             add_history(info, file_name, len(file_bytes))
+            # Truncate display name for the card
+            display_name = file_name if len(file_name) <= 48 else file_name[:45] + '…'
             st.markdown(f"""
-            <div class="ready-wrap">
-                <div class="ready-row">
-                    <div class="ready-ico">✓</div>
+            <div class="ready-card">
+                <div class="ready-inner">
+                    <div class="ready-check">✓</div>
                     <div>
-                        <div class="ready-title">Ready to Save!</div>
-                        <div class="ready-file">{file_name}</div>
-                        <div class="ready-meta">📦 {fmt_sz(len(file_bytes))} · click the button below</div>
+                        <div class="ready-label">Ready to Save!</div>
+                        <div class="ready-file">{display_name}</div>
+                        <div class="ready-meta">📦 {fmt_sz(len(file_bytes))} · tap the button below</div>
                     </div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
+            # Clean label — just show icon + size, not the full filename
             st.download_button(
-                label=f"⬇  Save  {file_name}",
-                data=file_bytes, file_name=file_name, mime=mime,
-                use_container_width=True, key=f"save_{int(time.time())}"
+                label=f"⬇  Save File  ·  {fmt_sz(len(file_bytes))}",
+                data=file_bytes,
+                file_name=file_name,
+                mime=mime,
+                use_container_width=True,
+                key=f"save_{int(time.time())}"
             )
+
 
 # ── Empty state ──────────────────────────────────────────────────────────────
 if not url and not st.session_state.video_info:
     st.markdown("""
-    <div style="text-align:center;padding:2.5rem 0 1rem;animation:fadeIn .5s ease">
-        <div style="font-size:2.8rem;opacity:.12;margin-bottom:.7rem">⬇</div>
-        <div style="color:var(--dim);font-size:.85rem;font-weight:500">Paste any URL to get started</div>
-        <div style="color:var(--border2);font-size:.72rem;margin-top:.4rem">
-            YouTube · TikTok · Instagram · Facebook · Twitter/X · Vimeo · 1800+ more
+    <div class="empty-state">
+        <div class="empty-icon">⬇</div>
+        <div class="empty-title">Paste a URL above to get started</div>
+        <div class="empty-sites">
+            YouTube <span>·</span> TikTok <span>·</span> Instagram <span>·</span>
+            Facebook <span>·</span> Twitter/X <span>·</span> Vimeo <span>·</span>
+            Twitch <span>·</span> Reddit <span>·</span> SoundCloud <span>·</span>
+            Dailymotion <span>+</span> 1800 more
         </div>
     </div>
     """, unsafe_allow_html=True)
 
+
 # ── History ──────────────────────────────────────────────────────────────────
 if st.session_state.history:
-    st.markdown('<div class="hist-title">Recent Downloads</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hist-header">Recent Downloads</div>', unsafe_allow_html=True)
     for h in st.session_state.history:
+        thumb_html = (f'<img class="hist-thumb" src="{h["thumb_b64"]}">'
+                      if h.get('thumb_b64') else '<div class="hist-thumb-ph">◈</div>')
         st.markdown(f"""
         <div class="hist-item">
-            {'<img class="hist-thumb" src="'+h["thumb"]+'">' if h.get("thumb") else '<div class="hist-thumb"></div>'}
-            <div class="hist-name">{type_icon(h["type"])} {h["title"]}</div>
-            <div class="hist-meta">{h["site"]} · {h["ts"]} · {h["fsize"]}</div>
+            {thumb_html}
+            <div class="hist-name">{type_icon(h['type'])} {h['title']}</div>
+            <div class="hist-meta"><span class="hist-site">{h['site']}</span> · {h['ts']} · {h['fsize']}</div>
         </div>
         """, unsafe_allow_html=True)
+
 
 # ── Footer ───────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="udp-footer">
-    <span style="color:#1c2a3d;font-weight:700;font-size:.8rem">Universal Downloader Pro</span><br>
+    <strong>Universal Downloader Pro</strong><br>
     Powered by yt-dlp · Free & Open Source · No API keys · No limits<br>
     YouTube · Instagram · TikTok · Facebook · Twitter/X · Reddit · Vimeo · 1800+ sites
 </div>
